@@ -1,0 +1,199 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "Profil Pengguna & Default Kantor Desa/KUA",
+      "description": "Data profil akun yang login beserta pengaturan default wilayah Kop Surat Desa/Kelurahan dan KUA agar mempercepat pemberkasan.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID pemilik profil"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Nama lengkap pengguna/petugas"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 160,
+          "description": "Email terverifikasi akun Google"
+        },
+        "defaultDesa": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "defaultKecamatan": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "defaultKabupaten": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "defaultProvinsi": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "defaultKua": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "defaultKepalaDesa": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "defaultNipKepalaDesa": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "defaultJabatanDesa": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "defaultAlamatKantorDesa": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore Server Timestamp saat dibuat"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore Server Timestamp saat diperbarui"
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "email",
+        "defaultDesa",
+        "defaultKecamatan",
+        "defaultKabupaten",
+        "defaultProvinsi",
+        "defaultKua",
+        "defaultKepalaDesa",
+        "defaultNipKepalaDesa",
+        "defaultJabatanDesa",
+        "defaultAlamatKantorDesa",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BerkasNikah": {
+      "title": "Berkas Pemberkasan Nikah",
+      "description": "Satu paket data terpadu untuk menghasilkan Form N1, N2, N4, N5, SPTJM, Surat Kuasa, Pernyataan Belum Menikah, dan Keterangan Wali Nikah dalam format Word & PDF A4.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID pemilik berkas (immutable)"
+        },
+        "kodeBerkas": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Kode registrasi berkas internal"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "lengkap", "diarsipkan"],
+          "maxLength": 20,
+          "description": "Status kelengkapan berkas (diarsipkan bersifat terminal)"
+        },
+        "catatan": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "desa": {
+          "type": "object",
+          "description": "Informasi Kop Desa/Kelurahan, Pejabat, KUA, dan nomor/tanggal surat"
+        },
+        "catinPria": {
+          "type": "object",
+          "description": "Biodata lengkap Calon Pengantin Pria"
+        },
+        "catinWanita": {
+          "type": "object",
+          "description": "Biodata lengkap Calon Pengantin Wanita"
+        },
+        "ayahPria": {
+          "type": "object",
+          "description": "Biodata Ayah Calon Pengantin Pria"
+        },
+        "ibuPria": {
+          "type": "object",
+          "description": "Biodata Ibu Calon Pengantin Pria"
+        },
+        "ayahWanita": {
+          "type": "object",
+          "description": "Biodata Ayah Calon Pengantin Wanita"
+        },
+        "ibuWanita": {
+          "type": "object",
+          "description": "Biodata Ibu Calon Pengantin Wanita"
+        },
+        "waliNikah": {
+          "type": "object",
+          "description": "Biodata & hubungan hukum Wali Nikah (Nasab/Hakim)"
+        },
+        "rencanaNikah": {
+          "type": "object",
+          "description": "Rencana hari, tanggal, jam, lokasi akad, dan maskawin"
+        },
+        "suratKuasa": {
+          "type": "object",
+          "description": "Biodata penerima kuasa pengurusan berkas ke KUA"
+        },
+        "sptjm": {
+          "type": "object",
+          "description": "Data pemohon & saksi untuk Surat Pertanggungjawaban Mutlak"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "kodeBerkas",
+        "status",
+        "catatan",
+        "desa",
+        "catinPria",
+        "catinWanita",
+        "ayahPria",
+        "ibuPria",
+        "ayahWanita",
+        "ibuWanita",
+        "waliNikah",
+        "rencanaNikah",
+        "suratKuasa",
+        "sptjm",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Profil privat dan pengaturan Kop Desa/KUA milik masing-masing akun pengguna."
+    },
+    "/berkas_nikah/{berkasId}": {
+      "schema": { "$ref": "#/entities/BerkasNikah" },
+      "description": "Koleksi berkas pemberkasan nikah milik masing-masing pengguna, terisolasi per ownerId."
+    }
+  }
+}

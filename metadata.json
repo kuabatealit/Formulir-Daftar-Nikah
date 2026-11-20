@@ -1,0 +1,6 @@
+{
+  "name": "Form Daftar Nikah",
+  "description": "Sistem Pemberkasan Nikah KUA & Desa otomatis (N1, N2, N4, N5, SPTJM, Surat Kuasa, Belum Menikah, Wali Nikah) siap ekspor Word dan PDF A4.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

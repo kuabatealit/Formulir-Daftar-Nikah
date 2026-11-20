@@ -1,0 +1,355 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Hardened Global Primitives
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isBoundedStr(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    // =========================================================================
+    // Validation Blueprints (Anti-Update-Gap & Strict Schema Enforcement)
+    // =========================================================================
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid', 'displayName', 'email',
+          'defaultDesa', 'defaultKecamatan', 'defaultKabupaten', 'defaultProvinsi',
+          'defaultKua', 'defaultKepalaDesa', 'defaultNipKepalaDesa',
+          'defaultJabatanDesa', 'defaultAlamatKantorDesa',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'displayName', 'email',
+          'defaultDesa', 'defaultKecamatan', 'defaultKabupaten', 'defaultProvinsi',
+          'defaultKua', 'defaultKepalaDesa', 'defaultNipKepalaDesa',
+          'defaultJabatanDesa', 'defaultAlamatKantorDesa',
+          'createdAt', 'updatedAt'
+        ])
+        && data.uid == request.auth.uid
+        && data.uid == userId
+        && isValidId(data.uid)
+        && isBoundedStr(data.displayName, 120)
+        && isBoundedStr(data.email, 160)
+        && isBoundedStr(data.defaultDesa, 100)
+        && isBoundedStr(data.defaultKecamatan, 100)
+        && isBoundedStr(data.defaultKabupaten, 100)
+        && isBoundedStr(data.defaultProvinsi, 100)
+        && isBoundedStr(data.defaultKua, 120)
+        && isBoundedStr(data.defaultKepalaDesa, 120)
+        && isBoundedStr(data.defaultNipKepalaDesa, 50)
+        && isBoundedStr(data.defaultJabatanDesa, 80)
+        && isBoundedStr(data.defaultAlamatKantorDesa, 200)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDesaMap(m) {
+      return m is map
+        && m.keys().hasAll([
+          'provinsi', 'kabupaten', 'kecamatan', 'desa', 'jenisWilayah',
+          'alamatKantorDesa', 'namaKepalaDesa', 'jabatanPejabat', 'nipPejabat',
+          'namaKua', 'alamatKua', 'nomorN1', 'nomorWali',
+          'tanggalSurat', 'tempatSurat', 'pihakPengaju'
+        ])
+        && m.keys().hasOnly([
+          'provinsi', 'kabupaten', 'kecamatan', 'desa', 'jenisWilayah',
+          'alamatKantorDesa', 'namaKepalaDesa', 'jabatanPejabat', 'nipPejabat',
+          'namaKua', 'alamatKua', 'nomorN1', 'nomorWali',
+          'tanggalSurat', 'tempatSurat', 'pihakPengaju'
+        ])
+        && isBoundedStr(m.provinsi, 100)
+        && isBoundedStr(m.kabupaten, 100)
+        && isBoundedStr(m.kecamatan, 100)
+        && isBoundedStr(m.desa, 100)
+        && m.jenisWilayah in ['Desa', 'Kelurahan']
+        && isBoundedStr(m.alamatKantorDesa, 200)
+        && isBoundedStr(m.namaKepalaDesa, 120)
+        && isBoundedStr(m.jabatanPejabat, 80)
+        && isBoundedStr(m.nipPejabat, 50)
+        && isBoundedStr(m.namaKua, 120)
+        && isBoundedStr(m.alamatKua, 200)
+        && isBoundedStr(m.nomorN1, 80)
+        && isBoundedStr(m.nomorWali, 80)
+        && isBoundedStr(m.tanggalSurat, 30)
+        && isBoundedStr(m.tempatSurat, 100)
+        && m.pihakPengaju in ['pria', 'wanita', 'keduanya'];
+    }
+
+    function isValidPersonMap(m) {
+      return m is map
+        && m.keys().hasAll([
+          'namaLengkap', 'binBinti', 'nik', 'jenisKelamin',
+          'tempatLahir', 'tanggalLahir', 'kewarganegaraan', 'agama',
+          'pekerjaan', 'alamat', 'statusPerkawinan',
+          'istriKe', 'namaPasanganSebelumnya'
+        ])
+        && m.keys().hasOnly([
+          'namaLengkap', 'binBinti', 'nik', 'jenisKelamin',
+          'tempatLahir', 'tanggalLahir', 'kewarganegaraan', 'agama',
+          'pekerjaan', 'alamat', 'statusPerkawinan',
+          'istriKe', 'namaPasanganSebelumnya'
+        ])
+        && isBoundedStr(m.namaLengkap, 120)
+        && isBoundedStr(m.binBinti, 120)
+        && isBoundedStr(m.nik, 24)
+        && m.jenisKelamin in ['Laki-laki', 'Perempuan']
+        && isBoundedStr(m.tempatLahir, 80)
+        && isBoundedStr(m.tanggalLahir, 30)
+        && isBoundedStr(m.kewarganegaraan, 60)
+        && isBoundedStr(m.agama, 40)
+        && isBoundedStr(m.pekerjaan, 80)
+        && isBoundedStr(m.alamat, 250)
+        && isBoundedStr(m.statusPerkawinan, 40)
+        && isBoundedStr(m.istriKe, 20)
+        && isBoundedStr(m.namaPasanganSebelumnya, 120);
+    }
+
+    function isValidParentMap(m) {
+      return m is map
+        && m.keys().hasAll([
+          'namaLengkap', 'binBinti', 'nik', 'tempatLahir', 'tanggalLahir',
+          'kewarganegaraan', 'agama', 'pekerjaan', 'alamat', 'statusHidup'
+        ])
+        && m.keys().hasOnly([
+          'namaLengkap', 'binBinti', 'nik', 'tempatLahir', 'tanggalLahir',
+          'kewarganegaraan', 'agama', 'pekerjaan', 'alamat', 'statusHidup'
+        ])
+        && isBoundedStr(m.namaLengkap, 120)
+        && isBoundedStr(m.binBinti, 120)
+        && isBoundedStr(m.nik, 24)
+        && isBoundedStr(m.tempatLahir, 80)
+        && isBoundedStr(m.tanggalLahir, 30)
+        && isBoundedStr(m.kewarganegaraan, 60)
+        && isBoundedStr(m.agama, 40)
+        && isBoundedStr(m.pekerjaan, 80)
+        && isBoundedStr(m.alamat, 250)
+        && m.statusHidup in ['Hidup', 'Almarhum', 'Almarhumah'];
+    }
+
+    function isValidWaliMap(m) {
+      return m is map
+        && m.keys().hasAll([
+          'jenisWali', 'hubunganWali', 'sebabWali', 'namaLengkap', 'bin',
+          'nik', 'tempatLahir', 'tanggalLahir', 'kewarganegaraan',
+          'agama', 'pekerjaan', 'alamat', 'nomorTelepon'
+        ])
+        && m.keys().hasOnly([
+          'jenisWali', 'hubunganWali', 'sebabWali', 'namaLengkap', 'bin',
+          'nik', 'tempatLahir', 'tanggalLahir', 'kewarganegaraan',
+          'agama', 'pekerjaan', 'alamat', 'nomorTelepon'
+        ])
+        && m.jenisWali in ['Wali Nasab', 'Wali Hakim']
+        && isBoundedStr(m.hubunganWali, 80)
+        && isBoundedStr(m.sebabWali, 160)
+        && isBoundedStr(m.namaLengkap, 120)
+        && isBoundedStr(m.bin, 120)
+        && isBoundedStr(m.nik, 24)
+        && isBoundedStr(m.tempatLahir, 80)
+        && isBoundedStr(m.tanggalLahir, 30)
+        && isBoundedStr(m.kewarganegaraan, 60)
+        && isBoundedStr(m.agama, 40)
+        && isBoundedStr(m.pekerjaan, 80)
+        && isBoundedStr(m.alamat, 250)
+        && isBoundedStr(m.nomorTelepon, 30);
+    }
+
+    function isValidRencanaMap(m) {
+      return m is map
+        && m.keys().hasAll([
+          'hariNikah', 'tanggalNikah', 'jamNikah',
+          'tempatAkad', 'alamatAkad', 'maskawin', 'pembayarMaskawin'
+        ])
+        && m.keys().hasOnly([
+          'hariNikah', 'tanggalNikah', 'jamNikah',
+          'tempatAkad', 'alamatAkad', 'maskawin', 'pembayarMaskawin'
+        ])
+        && isBoundedStr(m.hariNikah, 30)
+        && isBoundedStr(m.tanggalNikah, 30)
+        && isBoundedStr(m.jamNikah, 30)
+        && isBoundedStr(m.tempatAkad, 100)
+        && isBoundedStr(m.alamatAkad, 250)
+        && isBoundedStr(m.maskawin, 160)
+        && m.pembayarMaskawin in ['Tunai', 'Hutang'];
+    }
+
+    function isValidKuasaMap(m) {
+      return m is map
+        && m.keys().hasAll([
+          'pemberiKuasa', 'penerimaNama', 'penerimaNik',
+          'penerimaTempatLahir', 'penerimaTanggalLahir',
+          'penerimaPekerjaan', 'penerimaAlamat',
+          'penerimaHubungan', 'keperluanKuasa'
+        ])
+        && m.keys().hasOnly([
+          'pemberiKuasa', 'penerimaNama', 'penerimaNik',
+          'penerimaTempatLahir', 'penerimaTanggalLahir',
+          'penerimaPekerjaan', 'penerimaAlamat',
+          'penerimaHubungan', 'keperluanKuasa'
+        ])
+        && m.pemberiKuasa in ['Catin Pria', 'Catin Wanita', 'Keduanya']
+        && isBoundedStr(m.penerimaNama, 120)
+        && isBoundedStr(m.penerimaNik, 24)
+        && isBoundedStr(m.penerimaTempatLahir, 80)
+        && isBoundedStr(m.penerimaTanggalLahir, 30)
+        && isBoundedStr(m.penerimaPekerjaan, 80)
+        && isBoundedStr(m.penerimaAlamat, 250)
+        && isBoundedStr(m.penerimaHubungan, 80)
+        && isBoundedStr(m.keperluanKuasa, 300);
+    }
+
+    function isValidSptjmMap(m) {
+      return m is map
+        && m.keys().hasAll(['pemohon', 'saksi1Nama', 'saksi1Nik', 'saksi2Nama', 'saksi2Nik'])
+        && m.keys().hasOnly(['pemohon', 'saksi1Nama', 'saksi1Nik', 'saksi2Nama', 'saksi2Nik'])
+        && m.pemohon in ['Catin Pria', 'Catin Wanita']
+        && isBoundedStr(m.saksi1Nama, 120)
+        && isBoundedStr(m.saksi1Nik, 24)
+        && isBoundedStr(m.saksi2Nama, 120)
+        && isBoundedStr(m.saksi2Nik, 24);
+    }
+
+    function isValidBerkasNikah(data) {
+      return data.keys().hasAll([
+          'ownerId', 'kodeBerkas', 'status', 'catatan',
+          'desa', 'catinPria', 'catinWanita',
+          'ayahPria', 'ibuPria', 'ayahWanita', 'ibuWanita',
+          'waliNikah', 'rencanaNikah', 'suratKuasa', 'sptjm',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'kodeBerkas', 'status', 'catatan',
+          'desa', 'catinPria', 'catinWanita',
+          'ayahPria', 'ibuPria', 'ayahWanita', 'ibuWanita',
+          'waliNikah', 'rencanaNikah', 'suratKuasa', 'sptjm',
+          'createdAt', 'updatedAt'
+        ])
+        && data.ownerId == request.auth.uid
+        && isValidId(data.ownerId)
+        && isBoundedStr(data.kodeBerkas, 40)
+        && data.status in ['draft', 'lengkap', 'diarsipkan']
+        && isBoundedStr(data.catatan, 500)
+        && isValidDesaMap(data.desa)
+        && isValidPersonMap(data.catinPria)
+        && isValidPersonMap(data.catinWanita)
+        && isValidParentMap(data.ayahPria)
+        && isValidParentMap(data.ibuPria)
+        && isValidParentMap(data.ayahWanita)
+        && isValidParentMap(data.ibuWanita)
+        && isValidWaliMap(data.waliNikah)
+        && isValidRencanaMap(data.rencanaNikah)
+        && isValidKuasaMap(data.suratKuasa)
+        && isValidSptjmMap(data.sptjm)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Collection: /users/{userId} (Strict PII Isolation, Owner-Only)
+    // =========================================================================
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'email',
+          'defaultDesa', 'defaultKecamatan', 'defaultKabupaten', 'defaultProvinsi',
+          'defaultKua', 'defaultKepalaDesa', 'defaultNipKepalaDesa',
+          'defaultJabatanDesa', 'defaultAlamatKantorDesa',
+          'updatedAt'
+        ]);
+
+      allow delete: if isValidId(userId) && isOwner(userId);
+    }
+
+    // =========================================================================
+    // Collection: /berkas_nikah/{berkasId} (Owner-Scoped Dossiers)
+    // =========================================================================
+    match /berkas_nikah/{berkasId} {
+      allow get: if isValidId(berkasId)
+        && isSignedIn()
+        && existing().ownerId == request.auth.uid;
+
+      // Secure List Query: Forces client where('ownerId', '==', uid)
+      allow list: if isSignedIn()
+        && existing().ownerId == request.auth.uid;
+
+      allow create: if isValidId(berkasId)
+        && isSignedIn()
+        && isValidBerkasNikah(incoming())
+        && incoming().status in ['draft', 'lengkap']
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(berkasId)
+        && isSignedIn()
+        && isValidBerkasNikah(incoming())
+        && existing().ownerId == request.auth.uid
+        && existing().status != 'diarsipkan'
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action 1: Edit berkas fields & toggle draft/lengkap
+          (
+            incoming().status in ['draft', 'lengkap']
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'kodeBerkas', 'status', 'catatan',
+              'desa', 'catinPria', 'catinWanita',
+              'ayahPria', 'ibuPria', 'ayahWanita', 'ibuWanita',
+              'waliNikah', 'rencanaNikah', 'suratKuasa', 'sptjm',
+              'updatedAt'
+            ])
+          )
+          ||
+          // Action 2: Archive permanently (terminal state transition)
+          (
+            incoming().status == 'diarsipkan'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isValidId(berkasId)
+        && isSignedIn()
+        && existing().ownerId == request.auth.uid;
+    }
+  }
+}
